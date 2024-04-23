@@ -74,7 +74,6 @@ class SQLGraph:
                 self.graph.add_node(cond, label='ON')
                 self.graph.add_edge(join['table'], cond)
 
-        # Adding edges based on the components and their relationships
         if components['WHERE']:
             for node in self.graph.nodes(data=True):
                 if node[1]['label'] == 'FROM':
