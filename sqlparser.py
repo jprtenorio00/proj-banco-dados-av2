@@ -74,6 +74,7 @@ class SQLGraph:
                 self.graph.add_node(cond, label='ON')
                 self.graph.add_edge(join['table'], cond)
 
+        # Adding edges based on the components and their relationships
         if components['WHERE']:
             for node in self.graph.nodes(data=True):
                 if node[1]['label'] == 'FROM':
@@ -88,6 +89,14 @@ class SQLGraph:
         labels = {node: node for node in self.graph.nodes()}
         nx.draw(self.graph, pos, labels=labels, with_labels=True)
         plt.show()
+
+class QueryExecutionProcessor:
+    def __init__(self, graph):
+        self.graph = graph
+
+    def execute_order(self):
+        order = list(nx.topological_sort(self.graph))
+        return order
 
 class SQLProcessorApp:
     def __init__(self, root):
@@ -109,6 +118,9 @@ class SQLProcessorApp:
             components = parser.extract_components()
             graph = SQLGraph(components)
             graph.draw_graph()
+            processor = QueryExecutionProcessor(graph.graph)
+            order = processor.execute_order()
+            print("Order of Execution:", order)
             self.execute_query(formatted_sql)
         else:
             messagebox.showinfo("Informação", "Por favor, insira uma consulta SQL válida.")
