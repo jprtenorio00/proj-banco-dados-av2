@@ -27,18 +27,23 @@ class SQLQueryParser:
             'ROW', 'SET', 'TABLE', 'THEN', 'TO', 'TRANSACTION', 'TRUE', 'UNION',
             'UNIQUE', 'UPDATE', 'VALUES', 'VIEW', 'WHEN', 'WITH'
         ]
+        self.invalid_operators = [
+            '||', '+', '-', '/', '^', '!=', '!>', '!<', '~', '!~', '@>', '<@', '&', '|', '#', '%', '<<', '>>'
+        ]
         self.errors = []
         self.parse_query()
 
     def parse_query(self):
-        regex_pattern = r'\b(?:' + '|'.join(self.valid_keywords + self.invalid_keywords) + r')\b'
+        regex_keywords = r'\b(?:' + '|'.join(self.valid_keywords + self.invalid_keywords) + r')\b'
+        regex_operators = r'(?:' + '|'.join(map(re.escape, self.valid_operators + self.invalid_operators)) + r')'
+        regex_pattern = regex_keywords + '|' + regex_operators
         parts = re.split(regex_pattern, self.query, flags=re.I)
         keys = re.findall(regex_pattern, self.query, flags=re.I)
         tokens = list(zip(keys, parts[1:]))
         for key, part in tokens:
             key = key.upper().strip()
-            if key in self.invalid_keywords:
-                self.errors.append(f"Invalid SQL keyword used: '{key}'")
+            if key in self.invalid_keywords or key in self.invalid_operators:
+                self.errors.append(f"Invalid SQL keyword or operator used: '{key}'")
             else:
                 self.process_key(key, part.strip())
     
