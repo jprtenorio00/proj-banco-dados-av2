@@ -1,60 +1,86 @@
 import tkinter as tk
 from tkinter import scrolledtext, messagebox
-import sqlparse
 import networkx as nx
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import mysql.connector
 import re
 
 class SQLQueryParser:
     def __init__(self, query):
-        self.query = query
-        self.tokens = []
-        self.parse_query()
-
-    def parse_query(self):
-        parsed = sqlparse.parse(self.query)[0]
-        self.tokens = [(token.ttype, token.value) for token in parsed.tokens if token.ttype]
-
-    def extract_conditions(self, condition_string):
-        operators_pattern = re.compile(r'(\b(?:=|>|<|<=|>=|<>|AND|OR)\b|\(|\))', re.I)
-        tokens = operators_pattern.split(condition_string)
-        tokens = [token.strip() for token in tokens if token.strip()]
-        return tokens
-
-    def extract_components(self):
-        components = {
+        self.query = query.strip(';')
+        self.components = {
             'SELECT': [],
             'FROM': [],
             'WHERE': [],
             'JOIN': []
         }
+        self.valid_keywords = ['SELECT', 'FROM', 'WHERE', 'JOIN', 'ON']
+        self.valid_operators = ['=', '>', '<', '<=', '>=', '<>', 'AND', '(', ')', '*']
+        self.errors = []
+        self.parse_query()
 
-        select_match = re.search(r'SELECT(.*?)FROM', self.query, re.S | re.I)
-        if select_match:
-            components['SELECT'] = select_match.group(1).strip().split(',')
+    def parse_query(self):
+        regex_pattern = r'\b(?:' + '|'.join(self.valid_keywords) + r')\b'
+        parts = re.split(regex_pattern, self.query, flags=re.I)
+        keys = re.findall(regex_pattern, self.query, flags=re.I)
+        tokens = list(zip(keys, parts[1:]))
+        for key, part in tokens:
+            key = key.upper().strip()
+            if key == 'SELECT':
+                self.components['SELECT'] = [item.strip() for item in part.split(',')]
+            elif key == 'FROM':
+                self.components['FROM'] = [item.strip() for item in part.split(',')]
+            elif key == 'WHERE':
+                self.components['WHERE'] = self.extract_conditions(part.strip())
+            elif key == 'JOIN':
+                join_components = {'table': None, 'on': []}
+                on_index = part.upper().find(' ON ')
+                if on_index != -1:
+                    join_components['table'] = part[:on_index].strip()
+                    join_components['on'] = self.extract_conditions(part[on_index + 4:].strip())
+                else:
+                    join_components['table'] = part.strip()
+                self.components['JOIN'].append(join_components)
+        self.validate_query()
 
-        from_match = re.search(r'FROM(.*?)(WHERE|JOIN|$)', self.query, re.S | re.I)
-        if from_match:
-            components['FROM'] = from_match.group(1).strip().split(',')
+    def extract_conditions(self, condition_string):
+        parts = re.split(r'(\b(?:=|>|<|<=|>=|<>|AND|OR)\b|\(|\)|\s)', condition_string)
+        tokens = []
+        current_token = []
+        for part in parts:
+            part = part.strip()
+            if part:
+                if part in {'=', '>', '<', '<=', '>=', '<>', 'AND', 'OR', '(', ')'}:
+                    if current_token:
+                        tokens.append(''.join(current_token).strip())
+                        current_token = []
+                    tokens.append(part)
+                else:
+                    current_token.append(part + ' ')
+        if current_token:
+            tokens.append(''.join(current_token).strip())
+        return tokens
 
-        where_match = re.search(r'WHERE(.*?)(JOIN|$)', self.query, re.S | re.I)
-        if where_match:
-            components['WHERE'] = self.extract_conditions(where_match.group(1).strip())
+    def validate_query(self):
+        for component_list in self.components.values():
+            for component in component_list:
+                if isinstance(component, dict):
+                    if any(token not in self.valid_keywords and not re.match(r'^[\w\.]+$', token) for token in self.extract_conditions(component['table'])):
+                        self.errors.append(f"Invalid JOIN table: '{component['table']}'")
+                    for cond in component['on']:
+                        if any(token not in self.valid_keywords + self.valid_operators and not re.match(r'^[\w\.]+$', token) and not re.match(r'^[\w\.]+\s+[\w\.]+$', token) and not re.match(r'^\'[\w\s]+\'$', token) and not re.match(r'^\d+$', token) for token in self.extract_conditions(cond)):
+                            self.errors.append(f"Invalid operator or condition in JOIN ON: '{cond}'")
+                else:
+                    if any(token not in self.valid_keywords + self.valid_operators and not re.match(r'^[\w\.]+$', token) and not re.match(r'^[\w\.]+\s+[\w\.]+$', token) and not re.match(r'^\'[\w\s]+\'$', token) and not re.match(r'^\d+$', token) for token in self.extract_conditions(component)):
+                        self.errors.append(f"Invalid token or operator in SQL: '{component}'")
+        if self.errors:
+            self.errors.insert(0, "Errors detected in SQL query:")
 
-        joins = re.findall(r'JOIN(.*?)(?=JOIN|$)', self.query, re.S | re.I)
-        for join in joins:
-            join_components = {}
-            join_components['table'], *on_clause = re.split(r'ON', join, 1, flags=re.I)
-            join_components['table'] = join_components['table'].strip()
-            if on_clause:
-                join_components['on'] = self.extract_conditions(on_clause[0].strip())
-            else:
-                join_components['on'] = []
-            components['JOIN'].append(join_components)
+    def get_components(self):
+        return self.components
 
-        return components
+    def get_errors(self):
+        return self.errors
 
 class SQLGraph:
     def __init__(self, components):
@@ -63,31 +89,39 @@ class SQLGraph:
 
     def build_graph(self, components):
         for sel in components['SELECT']:
-            self.graph.add_node(sel.strip(), label='SELECT')
-        for frm in components['FROM']:
-            self.graph.add_node(frm.strip(), label='FROM')
-        for whr in components['WHERE']:
-            self.graph.add_node(whr, label='WHERE')
-        for join in components['JOIN']:
-            self.graph.add_node(join['table'], label='JOIN')
-            for cond in join['on']:
-                self.graph.add_node(cond, label='ON')
-                self.graph.add_edge(join['table'], cond)
+            sel_clean = sel.strip()
+            self.graph.add_node(sel_clean, label='SELECT')
 
-        # Adding edges based on the components and their relationships
+        for frm in components['FROM']:
+            frm_clean = frm.strip()
+            self.graph.add_node(frm_clean, label='FROM')
+            for sel in components['SELECT']:
+                sel_clean = sel.strip()
+                self.graph.add_edge(frm_clean, sel_clean)
+
         if components['WHERE']:
-            for node in self.graph.nodes(data=True):
-                if node[1]['label'] == 'FROM':
-                    for whr in components['WHERE']:
-                        self.graph.add_edge(node[0], whr)
-        if components['JOIN']:
-            for join in components['JOIN']:
-                self.graph.add_edge(join['table'], join['on'][0])
+            for whr in components['WHERE']:
+                whr_clean = whr.strip()
+                self.graph.add_node(whr_clean, label='WHERE')
+                for frm in components['FROM']:
+                    frm_clean = frm.strip()
+                    self.graph.add_edge(frm_clean, whr_clean)
+
+        for join in components['JOIN']:
+            join_table = join['table'].strip()
+            self.graph.add_node(join_table, label='JOIN')
+            for frm in components['FROM']:
+                frm_clean = frm.strip()
+                self.graph.add_edge(frm_clean, join_table)
+            for cond in join['on']:
+                cond_clean = cond.strip()
+                self.graph.add_node(cond_clean, label='ON')
+                self.graph.add_edge(join_table, cond_clean)
 
     def draw_graph(self):
         pos = nx.spring_layout(self.graph)
         labels = {node: node for node in self.graph.nodes()}
-        nx.draw(self.graph, pos, labels=labels, with_labels=True)
+        nx.draw(self.graph, pos, labels=labels, with_labels=True, node_color='lightblue', edge_color='gray')
         plt.show()
 
 class QueryExecutionProcessor:
@@ -112,16 +146,18 @@ class SQLProcessorApp:
     def process_query(self):
         sql = self.sql_input.get("1.0", tk.END).strip()
         if sql:
-            formatted_sql = sqlparse.format(sql, reindent=True, keyword_case='upper')
-            print("Formatted SQL:", formatted_sql)
-            parser = SQLQueryParser(formatted_sql)
-            components = parser.extract_components()
-            graph = SQLGraph(components)
-            graph.draw_graph()
-            processor = QueryExecutionProcessor(graph.graph)
-            order = processor.execute_order()
-            print("Order of Execution:", order)
-            self.execute_query(formatted_sql)
+            parser = SQLQueryParser(sql)
+            errors = parser.get_errors()
+            if errors:
+                messagebox.showerror("Erro de Consulta SQL", "\n".join(errors))
+            else:
+                components = parser.get_components()
+                graph = SQLGraph(components)
+                graph.draw_graph()
+                processor = QueryExecutionProcessor(graph.graph)
+                order = processor.execute_order()
+                print("Order of Execution:", order)
+                self.execute_query(sql)
         else:
             messagebox.showinfo("Informação", "Por favor, insira uma consulta SQL válida.")
 
