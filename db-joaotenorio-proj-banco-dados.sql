@@ -245,3 +245,5 @@ SELECT Pedido.idPedido, Status.Descricao AS Status, Pedido.DataPedido, Pedido.Va
 SELECT Cliente.Nome, Cliente.Email FROM Cliente JOIN Endereco ON Cliente.idCliente = Endereco.Cliente_idCliente JOIN TipoEndereco ON Endereco.TipoEndereco_idTipoEndereco = TipoEndereco.idTipoEndereco WHERE TipoEndereco.Descricao <> 'Comercial';
 -- Produtos com estoque baixo em determinadas categorias
 SELECT Produto.Nome, Produto.QuantEstoque, Categoria.Descricao AS Categoria FROM Produto JOIN Categoria ON Produto.Categoria_idCategoria = Categoria.idCategoria WHERE Produto.QuantEstoque < 10 AND Categoria.Descricao IN ('Eletrônicos', 'Alimentos');
+-- Utilizando o operador LIKE e a função SUM()
+SELECT Cliente.Nome, SUM(Pedido.ValorTotalPedido) AS ValorTotalCompras FROM Cliente JOIN Pedido ON Cliente.idCliente = Pedido.Cliente_idCliente WHERE Cliente.Nome LIKE '%Silva%' GROUP BY Cliente.Nome;
