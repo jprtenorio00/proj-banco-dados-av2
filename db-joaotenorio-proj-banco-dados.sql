@@ -235,15 +235,40 @@ INSERT INTO Pedido_has_Produto (Pedido_idPedido, Produto_idProduto, Quantidade, 
 (2, 2, 1, 50.00),
 (2, 3, 1, 5.99);
 
--- Listar todos os produtos com suas categorias
-SELECT Produto.Nome AS Produto, Categoria.Descricao AS Categoria FROM Produto JOIN Categoria ON Produto.Categoria_idCategoria = Categoria.idCategoria;
--- Encontrar clientes VIP com pedidos acima de 100 reais
+-- Inserir um pedido com valor 0
+INSERT INTO Pedido (idPedido, Status_idStatus, DataPedido, ValorTotalPedido, Cliente_idCliente) VALUES
+(3, 1, NOW(), 0.00, 2);
+
+-- Pedido com o idPedido igual a 4
+INSERT INTO Pedido (idPedido, Status_idStatus, DataPedido, ValorTotalPedido, Cliente_idCliente) VALUES
+(4, 1, NOW(), 0.00, 2);
+
+-- Inserção de Pedido com ID 4
+INSERT INTO Pedido_has_Produto (Pedido_idPedido, Produto_idProduto, Quantidade, PrecoUnitario) VALUES
+(4, 1, 1, 0.00);
+
+-- Exemplos de Query
+SELECT * FROM CATEGORIA;
+
 SELECT Cliente.Nome, Pedido.idPedido, Pedido.ValorTotalPedido FROM Cliente JOIN TipoCliente ON Cliente.TipoCliente_idTipoCliente = TipoCliente.idTipoCliente JOIN Pedido ON Cliente.idCliente = Pedido.Cliente_idCliente WHERE TipoCliente.Descricao = 'VIP' AND Pedido.ValorTotalPedido > 100;
--- Pedidos recentes que foram entregues ou cancelados
-SELECT Pedido.idPedido, Status.Descricao AS Status, Pedido.DataPedido, Pedido.ValorTotalPedido FROM Pedido JOIN Status ON Pedido.Status_idStatus = Status.idStatus WHERE (Status.Descricao = 'Fechado' OR Status.Descricao = 'Cancelado') AND Pedido.DataPedido >= DATE_SUB(NOW(), INTERVAL 30 DAY);
--- Clientes que não têm endereço comercial
-SELECT Cliente.Nome, Cliente.Email FROM Cliente JOIN Endereco ON Cliente.idCliente = Endereco.Cliente_idCliente JOIN TipoEndereco ON Endereco.TipoEndereco_idTipoEndereco = TipoEndereco.idTipoEndereco WHERE TipoEndereco.Descricao <> 'Comercial';
--- Produtos com estoque baixo em determinadas categorias
-SELECT Produto.Nome, Produto.QuantEstoque, Categoria.Descricao AS Categoria FROM Produto JOIN Categoria ON Produto.Categoria_idCategoria = Categoria.idCategoria WHERE Produto.QuantEstoque < 10 AND Categoria.Descricao IN ('Eletrônicos', 'Alimentos');
--- Utilizando o operador LIKE e a função SUM()
+
+SELECT Produto.Nome Produto, Categoria.Descricao Categoria FROM Produto JOIN Categoria ON Produto.Categoria_idCategoria = Categoria.idCategoria;
+
 SELECT Cliente.Nome, SUM(Pedido.ValorTotalPedido) AS ValorTotalCompras FROM Cliente JOIN Pedido ON Cliente.idCliente = Pedido.Cliente_idCliente WHERE Cliente.Nome LIKE '%Silva%' GROUP BY Cliente.Nome;
+
+-- Prof:
+Select cliente.nome, pedido.idPedido, pedido.DataPedido, pedido.ValorTotalPedido
+from Cliente Join pedido on cliente.idcliente = pedido.Cliente_idCliente
+where cliente.TipoCliente_idTipoCliente = 1 and pedido.ValorTotalPedido = 0;
+
+Select cliente.nome, pedido.idPedido, pedido.DataPedido, Status.descricao, pedido.ValorTotalPedido
+from Cliente Join pedido on cliente.idcliente = pedido.Cliente_idCliente
+Join Status on Status.idstatus = Pedido.status_idstatus
+where Status.descricao = 'Aberto' and cliente.TipoCliente_idTipoCliente = 1 and pedido.ValorTotalPedido = 0;
+
+Select cliente.nome, pedido.idPedido, pedido.DataPedido, Status.descricao, pedido.ValorTotalPedido, produto.QuantEstoque
+from Cliente Join pedido on cliente.idcliente = pedido.Cliente_idCliente
+Join Status on Status.idstatus = Pedido.status_idstatus
+Join pedido_has_produto on pedido.idPedido = pedido_has_produto.Pedido_idPedido
+Join produto on produto.idProduto = pedido_has_produto.Produto_idProduto
+where Status.descricao = 'Aberto' and cliente.TipoCliente_idTipoCliente = 1 and pedido.ValorTotalPedido = 0 and produto.QuantEstoque > 0;
