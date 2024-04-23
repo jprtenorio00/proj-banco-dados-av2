@@ -175,3 +175,62 @@ ADD CONSTRAINT fk_Pedido_has_Produto_Produto
  REFERENCES Produto (idProduto)
  ON DELETE NO ACTION
  ON UPDATE NO ACTION;
+ 
+ USE BD_Vendas;
+
+-- ALTERAÇÕES JOAO TENÓRIO
+
+-- Inserindo dados na tabela Categoria
+INSERT INTO Categoria (idCategoria, Descricao) VALUES
+(1, 'Eletrônicos'),
+(2, 'Roupas'),
+(3, 'Alimentos');
+
+-- Inserindo dados na tabela Produto
+INSERT INTO Produto (idProduto, Nome, Descricao, Preco, QuantEstoque, Categoria_idCategoria) VALUES
+(1, 'Smartphone', 'Smartphone com 128GB de memória', 1200.00, 30, 1),
+(2, 'Camiseta', 'Camiseta de algodão tamanho M', 50.00, 100, 2),
+(3, 'Chocolate', 'Barra de chocolate 100g', 5.99, 200, 3);
+
+-- Inserindo dados na tabela TipoCliente
+INSERT INTO TipoCliente (idTipoCliente, Descricao) VALUES
+(1, 'Normal'),
+(2, 'VIP'),
+(3, 'Atacado');
+
+-- Inserindo dados na tabela Cliente
+INSERT INTO Cliente (idCliente, Nome, Email, Nascimento, Senha, TipoCliente_idTipoCliente, DataRegistro) VALUES
+(1, 'João Silva', 'joao.silva@email.com', '1995-06-15', 'senha123', 2, NOW()),
+(2, 'Maria Oliveira', 'maria.oliveira@email.com', '1988-08-25', 'senha123', 1, NOW());
+
+-- Inserindo dados na tabela TipoEndereco
+INSERT INTO TipoEndereco (idTipoEndereco, Descricao) VALUES
+(1, 'Residencial'),
+(2, 'Comercial');
+
+-- Inserindo dados na tabela Endereco
+INSERT INTO Endereco (idEndereco, EnderecoPadrao, Logradouro, Numero, Complemento, Bairro, Cidade, UF, CEP, TipoEndereco_idTipoEndereco, Cliente_idCliente) VALUES
+(1, 1, 'Rua das Flores', '123', 'Apt 201', 'Centro', 'São Paulo', 'SP', '01002020', 1, 1),
+(2, 1, 'Av. Brasil', '2500', 'Sala 5', 'Jardim América', 'Rio de Janeiro', 'RJ', '22030030', 2, 2);
+
+-- Inserindo dados na tabela Telefone
+INSERT INTO Telefone (Numero, Cliente_idCliente) VALUES
+('11987654321', 1),
+('21987654321', 2);
+
+-- Inserindo dados na tabela Status
+INSERT INTO Status (idStatus, Descricao) VALUES
+(1, 'Aberto'),
+(2, 'Fechado'),
+(3, 'Cancelado');
+
+-- Inserindo dados na tabela Pedido
+INSERT INTO Pedido (idPedido, Status_idStatus, DataPedido, ValorTotalPedido, Cliente_idCliente) VALUES
+(1, 1, NOW(), 1250.00, 1),
+(2, 2, NOW(), 55.99, 2);
+
+-- Inserindo dados na tabela Pedido_has_Produto
+INSERT INTO Pedido_has_Produto (Pedido_idPedido, Produto_idProduto, Quantidade, PrecoUnitario) VALUES
+(1, 1, 1, 1200.00),
+(2, 2, 1, 50.00),
+(2, 3, 1, 5.99);
