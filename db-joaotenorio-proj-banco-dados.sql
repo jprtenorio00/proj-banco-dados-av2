@@ -234,3 +234,14 @@ INSERT INTO Pedido_has_Produto (Pedido_idPedido, Produto_idProduto, Quantidade, 
 (1, 1, 1, 1200.00),
 (2, 2, 1, 50.00),
 (2, 3, 1, 5.99);
+
+-- Listar todos os produtos com suas categorias
+SELECT Produto.Nome AS Produto, Categoria.Descricao AS Categoria FROM Produto JOIN Categoria ON Produto.Categoria_idCategoria = Categoria.idCategoria;
+-- Encontrar clientes VIP com pedidos acima de 100 reais
+SELECT Cliente.Nome, Pedido.idPedido, Pedido.ValorTotalPedido FROM Cliente JOIN TipoCliente ON Cliente.TipoCliente_idTipoCliente = TipoCliente.idTipoCliente JOIN Pedido ON Cliente.idCliente = Pedido.Cliente_idCliente WHERE TipoCliente.Descricao = 'VIP' AND Pedido.ValorTotalPedido > 100;
+-- Pedidos recentes que foram entregues ou cancelados
+SELECT Pedido.idPedido, Status.Descricao AS Status, Pedido.DataPedido, Pedido.ValorTotalPedido FROM Pedido JOIN Status ON Pedido.Status_idStatus = Status.idStatus WHERE (Status.Descricao = 'Fechado' OR Status.Descricao = 'Cancelado') AND Pedido.DataPedido >= DATE_SUB(NOW(), INTERVAL 30 DAY);
+-- Clientes que não têm endereço comercial
+SELECT Cliente.Nome, Cliente.Email FROM Cliente JOIN Endereco ON Cliente.idCliente = Endereco.Cliente_idCliente JOIN TipoEndereco ON Endereco.TipoEndereco_idTipoEndereco = TipoEndereco.idTipoEndereco WHERE TipoEndereco.Descricao <> 'Comercial';
+-- Produtos com estoque baixo em determinadas categorias
+SELECT Produto.Nome, Produto.QuantEstoque, Categoria.Descricao AS Categoria FROM Produto JOIN Categoria ON Produto.Categoria_idCategoria = Categoria.idCategoria WHERE Produto.QuantEstoque < 10 AND Categoria.Descricao IN ('Eletrônicos', 'Alimentos');
