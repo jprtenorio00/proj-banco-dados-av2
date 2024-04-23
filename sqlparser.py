@@ -16,63 +16,70 @@ class SQLQueryParser:
         }
         self.valid_keywords = ['SELECT', 'FROM', 'WHERE', 'JOIN', 'ON']
         self.valid_operators = ['=', '>', '<', '<=', '>=', '<>', 'AND', '(', ')', '*']
+        self.invalid_keywords = [
+            'ADD', 'ALL', 'ALTER', 'ANALYZE', 'AS', 'ASC', 'AUTO_INCREMENT',
+            'BETWEEN', 'CASE', 'CHECK', 'COLUMN', 'COMMIT', 'CONSTRAINT', 'CREATE',
+            'DATABASE', 'DEFAULT', 'DELETE', 'DESC', 'DISTINCT', 'DROP', 'ELSE',
+            'EXCEPT', 'EXISTS', 'FALSE', 'FOREIGN', 'FULL', 'GROUP BY', 'HAVING',
+            'IF', 'IN', 'INDEX', 'INNER', 'INSERT', 'INTERSECT', 'INTO', 'IS',
+            'IS NULL', 'KEY', 'LEFT', 'LIKE', 'LIMIT', 'NOT', 'NOT NULL', 'NULL',
+            'OR', 'ORDER BY', 'OUTER', 'PRIMARY', 'PROCEDURE', 'RIGHT', 'ROLLBACK',
+            'ROW', 'SET', 'TABLE', 'THEN', 'TO', 'TRANSACTION', 'TRUE', 'UNION',
+            'UNIQUE', 'UPDATE', 'VALUES', 'VIEW', 'WHEN', 'WITH'
+        ]
         self.errors = []
         self.parse_query()
 
     def parse_query(self):
-        regex_pattern = r'\b(?:' + '|'.join(self.valid_keywords) + r')\b'
+        regex_pattern = r'\b(?:' + '|'.join(self.valid_keywords + self.invalid_keywords) + r')\b'
         parts = re.split(regex_pattern, self.query, flags=re.I)
         keys = re.findall(regex_pattern, self.query, flags=re.I)
         tokens = list(zip(keys, parts[1:]))
         for key, part in tokens:
             key = key.upper().strip()
-            if key == 'SELECT':
-                self.components['SELECT'] = [item.strip() for item in part.split(',')]
-            elif key == 'FROM':
-                self.components['FROM'] = [item.strip() for item in part.split(',')]
-            elif key == 'WHERE':
-                self.components['WHERE'] = self.extract_conditions(part.strip())
-            elif key == 'JOIN':
-                join_components = {'table': None, 'on': []}
-                on_index = part.upper().find(' ON ')
-                if on_index != -1:
-                    join_components['table'] = part[:on_index].strip()
-                    join_components['on'] = self.extract_conditions(part[on_index + 4:].strip())
-                else:
-                    join_components['table'] = part.strip()
-                self.components['JOIN'].append(join_components)
+            if key in self.invalid_keywords:
+                self.errors.append(f"Invalid SQL keyword used: '{key}'")
+            else:
+                self.process_key(key, part.strip())
+    
+    def process_key(self, key, part):
+        if key == 'SELECT':
+            self.components['SELECT'] = [item.strip() for item in part.split(',')]
+        elif key == 'FROM':
+            self.components['FROM'] = [item.strip() for item in part.split(',')]
+        elif key == 'WHERE':
+            self.components['WHERE'] = self.extract_conditions(part.strip())
+        elif key == 'JOIN':
+            join_components = {'table': None, 'on': []}
+            on_index = part.upper().find(' ON ')
+            if on_index != -1:
+                join_components['table'] = part[:on_index].strip()
+                join_components['on'] = self.extract_conditions(part[on_index + 4:].strip())
+            else:
+                join_components['table'] = part.strip()
+            self.components['JOIN'].append(join_components)
         self.validate_query()
 
     def extract_conditions(self, condition_string):
         parts = re.split(r'(\b(?:=|>|<|<=|>=|<>|AND|OR)\b|\(|\)|\s)', condition_string)
-        tokens = []
-        current_token = []
-        for part in parts:
-            part = part.strip()
-            if part:
-                if part in {'=', '>', '<', '<=', '>=', '<>', 'AND', 'OR', '(', ')'}:
-                    if current_token:
-                        tokens.append(''.join(current_token).strip())
-                        current_token = []
-                    tokens.append(part)
-                else:
-                    current_token.append(part + ' ')
-        if current_token:
-            tokens.append(''.join(current_token).strip())
+        tokens = [part.strip() for part in parts if part.strip()]
         return tokens
 
     def validate_query(self):
-        for component_list in self.components.values():
-            for component in component_list:
-                if isinstance(component, dict):
-                    if any(token not in self.valid_keywords and not re.match(r'^[\w\.]+$', token) for token in self.extract_conditions(component['table'])):
-                        self.errors.append(f"Invalid JOIN table: '{component['table']}'")
-                    for cond in component['on']:
-                        if any(token not in self.valid_keywords + self.valid_operators and not re.match(r'^[\w\.]+$', token) and not re.match(r'^[\w\.]+\s+[\w\.]+$', token) and not re.match(r'^\'[\w\s]+\'$', token) and not re.match(r'^\d+$', token) for token in self.extract_conditions(cond)):
-                            self.errors.append(f"Invalid operator or condition in JOIN ON: '{cond}'")
-                else:
-                    if any(token not in self.valid_keywords + self.valid_operators and not re.match(r'^[\w\.]+$', token) and not re.match(r'^[\w\.]+\s+[\w\.]+$', token) and not re.match(r'^\'[\w\s]+\'$', token) and not re.match(r'^\d+$', token) for token in self.extract_conditions(component)):
-                        self.errors.append(f"Invalid token or operator in SQL: '{component}'")
+        if not self.errors:
+            for component_list in self.components.values():
+                for component in component_list:
+                    if isinstance(component, dict):
+                        if any(token not in self.valid_keywords + self.valid_operators and not re.match(r'^[\w\.]+$', token) for token in self.extract_conditions(component['table'])):
+                            self.errors.append(f"Invalid JOIN table: '{component['table']}'")
+                        for cond in component['on']:
+                            if any(token not in self.valid_keywords + self.valid_operators and not re.match(r'^[\w\.]+$', token) and not re.match(r'^[\w\.]+\s+[\w\.]+$', token) and not re.match(r'^\'[\w\s]+\'$', token) and not re.match(r'^\d+$', token) for token in self.extract_conditions(cond)):
+                                self.errors.append(f"Invalid operator or condition in JOIN ON: '{cond}'")
+                        pass
+                    else:
+                        if any(token not in self.valid_keywords + self.valid_operators and not re.match(r'^[\w\.]+$', token) and not re.match(r'^[\w\.]+\s+[\w\.]+$', token) and not re.match(r'^\'[\w\s]+\'$', token) and not re.match(r'^\d+$', token) for token in self.extract_conditions(component)):
+                            self.errors.append(f"Invalid token or operator in SQL: '{component}'")
+                        pass
         if self.errors:
             self.errors.insert(0, "Errors detected in SQL query:")
 
