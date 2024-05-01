@@ -5,9 +5,24 @@ import matplotlib.pyplot as plt
 import mysql.connector
 import re
 
+def build_database_schema():
+    return {
+        'Categoria': ['idCategoria', 'Descricao'],
+        'Produto': ['idProduto', 'Nome', 'Descricao', 'Preco', 'QuantEstoque', 'Categoria_idCategoria'],
+        'TipoCliente': ['idTipoCliente', 'Descricao'],
+        'Cliente': ['idCliente', 'Nome', 'Email', 'Nascimento', 'Senha', 'TipoCliente_idTipoCliente', 'DataRegistro'],
+        'TipoEndereco': ['idTipoEndereco', 'Descricao'],
+        'Endereco': ['idEndereco', 'EnderecoPadrao', 'Logradouro', 'Numero', 'Complemento', 'Bairro', 'Cidade', 'UF', 'CEP', 'TipoEndereco_idTipoCliente', 'Cliente_idCliente'],
+        'Telefone': ['Numero', 'Cliente_idCliente'],
+        'Status': ['idStatus', 'Descricao'],
+        'Pedido': ['idPedido', 'Status_idStatus', 'DataPedido', 'ValorTotalPedido', 'Cliente_idCliente'],
+        'Pedido_has_Produto': ['idPedidoProduto', 'Pedido_idPedido', 'Produto_idProduto', 'Quantidade', 'PrecoUnitario']
+    }
+
 class SQLQueryParser:
     def __init__(self, query):
         self.query = query.strip(';')
+        self.schema = build_database_schema()
         self.components = {
             'SELECT': [],
             'FROM': [],
