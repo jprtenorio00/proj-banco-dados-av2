@@ -30,7 +30,7 @@ class SQLQueryParser:
             'JOIN': []
         }
         self.valid_keywords = ['SELECT', 'FROM', 'WHERE', 'JOIN', 'ON']
-        self.valid_operators = ['=', '>', '<', '<=', '>=', '<>', 'AND', '(', ')', '*']
+        self.valid_operators = ['=', '>', '<', '<=', '>=', '<>', 'AND', '(', ')']
         self.invalid_keywords = [
             'ADD', 'ALL', 'ALTER', 'ANALYZE', 'AS', 'ASC', 'AUTO_INCREMENT',
             'BETWEEN', 'CASE', 'CHECK', 'COLUMN', 'COMMIT', 'CONSTRAINT', 'CREATE',
@@ -81,7 +81,7 @@ class SQLQueryParser:
         self.validate_query()
 
     def extract_conditions(self, condition_string):
-        parts = re.split(r'(\b(?:=|>|<|<=|>=|<>|AND|OR)\b|\(|\)|\s)', condition_string)
+        parts = re.split(r'(\b(?:=|>|<|<=|>=|<>|AND)\b|\(|\)|\s)', condition_string)
         tokens = [part.strip() for part in parts if part.strip()]
         return tokens
 
